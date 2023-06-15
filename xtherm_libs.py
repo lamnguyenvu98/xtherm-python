@@ -51,8 +51,6 @@ class InfiFrame:
         self.calibrate()
         
         self.frame_raw_u16 = None
-        self.frame_vis_f32 = None
-
  
     def update(self) -> Tuple[dict, np.ndarray]:
         shutTemper = read_u16(self.frame_raw_u16, self.fourLinePara + self.amountPixels + 1)
@@ -68,10 +66,10 @@ class InfiFrame:
         cal_04 = read_f32(self.frame_raw_u16, self.fourLinePara + self.amountPixels + 9)
         cal_05 = read_f32(self.frame_raw_u16, self.fourLinePara + self.amountPixels + 11)
         
-        cameraSoftVersion = read_u8(self.frame_raw_u16, self.fourLinePara + self.amountPixels + 24, step=8)
+        cameraSoftVersion: np.ndarray = read_u8(self.frame_raw_u16, self.fourLinePara + self.amountPixels + 24, step=8)
         cameraSoftVersion = cameraSoftVersion.tobytes().decode("ascii").rstrip("\x00")
         
-        sn = read_u8(self.frame_raw_u16, self.fourLinePara + self.amountPixels + 32, step=3) 
+        sn: np.ndarray = read_u8(self.frame_raw_u16, self.fourLinePara + self.amountPixels + 32, step=3) 
         sn = sn.tobytes().decode("ascii").rstrip("\x00")
         
         correction = read_f32(self.frame_raw_u16, self.fourLinePara + self.userArea)
@@ -156,10 +154,9 @@ class InfiFrame:
     # read raw data from cam, seperate visible frame from metadata
     def read_data(self) -> Tuple[bool, np.ndarray]:
         ret, frame_raw = self.cap.read()
-        self.frame_raw_u16 = frame_raw.view(np.uint16).ravel()
-        self.frame_visible = self.frame_raw_u16[:self.fourLinePara].copy().reshape(self.height - 4, self.width)
-        self.frame_vis_f32 = self.frame_visible.copy().astype(np.float32)
-        return ret, self.frame_visible      
+        self.frame_raw_u16: np.ndarray = frame_raw.view(np.uint16).ravel()
+        frame_visible = self.frame_raw_u16[:self.fourLinePara].copy().reshape(self.height - 4, self.width)
+        return ret, frame_visible
 
     def set_correction(self, correction: float) -> None:
         self.sendFloatCommand(position=SET_CORRECTION, value=correction)
@@ -248,26 +245,6 @@ class InfiFrame:
         ''' Release cap opencv '''
         self.cap.release()
 
-    def linear_algorithm(self) -> None:
-        ''' Processing 16 bit data frame and return processed frame
-
-            Returns:
-                outFrame : np.ndarray
-                    A processed bit frame 8
-        '''
-        outFrame = np.zeros_like(self.frame_vis_f32, dtype=np.uint8)
-    
-        ro = int(self.max_raw - self.min_raw if self.max_raw - self.min_raw > 0 else 1)
-        avgSubMin = int(self.avg_raw - self.min_raw if self.avg_raw - self.min_raw > 0 else 1)
-        maxSubAvg = int(self.max_raw - self.avg_raw if self.max_raw - self.avg_raw > 0 else 1)
-        ro1 = int(97 if (self.avg_raw - self.min_raw) > 97 else (self.avg_raw - self.min_raw))
-        ro2 = int(157 if (self.max_raw - self.avg_raw) > 157 else (self.max_raw - self.avg_raw))
-        
-        outFrame[self.frame_vis_f32 > self.avg_raw] = ro2 * (self.frame_vis_f32[self.frame_vis_f32 > self.avg_raw] - self.avg_raw) / maxSubAvg + 97
-        outFrame[self.frame_vis_f32 < self.avg_raw] = ro1 * (self.frame_vis_f32[self.frame_vis_f32 < self.avg_raw] - self.avg_raw) / avgSubMin + 97
-        
-        return outFrame
-
     def init_parameters(self) -> None:
         ''' Initalize parameters based on thermal camera resolution '''
         match self.width:
@@ -335,7 +312,7 @@ class InfiFrame:
     # for each 16 bit value from frame data will return correspond temperture value
     def get_temp_table(self, correction, Airtmp, table_offset, distance_adjusted):
         ''' x: uint16 '''
-        n = np.sqrt(((np.arange(16384, dtype=np.float32) - table_offset) * self.cal_d + self.cal_c) / self.cal_01 + self.cal_b)
+        n = np.sqrt(np.abs(((np.arange(16384, dtype=np.float32) - table_offset) * self.cal_d + self.cal_c) / self.cal_01 + self.cal_b))
         n[np.isnan(n)] = 0.0        
         wtot = np.power(n - self.cal_a + self.ZEROC, 4)
         ttot = np.power((wtot - self.numerator_sub) / self.denominator, 0.25) - self.ZEROC
