@@ -6,12 +6,8 @@ pip install opencv-python
 ### Requirements
 Require Python version: >= 3.10
 
-Supported different width of Infiray thermal monoculars:
-    - 640
-    - 384
-    - 256
-    - 240
-
+Supported different width of Infiray thermal monoculars: `640, 384, 256, 240`
+    
 ### How to use
 
 #### 1. Initialize camera
@@ -24,8 +20,8 @@ Supported different width of Infiray thermal monoculars:
     ```
 
 #### 2. Config camera parameters (Optional)
-    Don't use this code if you want use default parameters
-    ```
+Don't use this code if you want use default parameters
+
     # Default settings
 
     cam.set_correction(1)
@@ -37,18 +33,17 @@ Supported different width of Infiray thermal monoculars:
     
     # save parameters in hardware (might lost default parameters)
     cam.save_parameters()
-    ```
 
 #### 3. Set custom points (Optional)
-    ```
+
     # Set user temperature ("temp_user_00", "temp_user_01", "temp_user_02" in info)
     # Can only set 3 custom points (index from 0 to 2)
     
     cam.set_point(x=256//2, y=192//2, index=0) # set central point
-    ```
+
 
 #### 4. Read frame and data
-    ```
+
     # frame processing function
     def linear_algorithm(frame: np.float32, info: dict) -> None:
         ''' Processing 16 bit data frame and return processed frame
@@ -73,9 +68,9 @@ Supported different width of Infiray thermal monoculars:
     point = (192//2, 256//2)
 
     while True:
-        ret, frame_vis = infiframe.read_data()
+        ret, frame_vis = cam.read_data()
         if not ret: break
-        info, temp_lut = infiframe.update()
+        info, temp_lut = cam.update()
         
         # Position of highest temperature
         temp_max_x = info["temp_max_x"]
@@ -98,11 +93,11 @@ Supported different width of Infiray thermal monoculars:
         if cv2.waitKey(1) & 0xff == 27:
             break
     
-    infiframe.release()
+    cam.release()
     cv2.destroyAllWindows
-    ```
+
 
 References:
-- https://github.com/stawel/ht301_hacklib
+1. https://github.com/stawel/ht301_hacklib
 
-- https://gitlab.com/netman69/inficam/-/blob/master/libinficam/src/main/jni/InfiCam/InfiFrame.cpp
+2. https://gitlab.com/netman69/inficam/-/blob/master/libinficam/src/main/jni/InfiCam/InfiFrame.cpp
